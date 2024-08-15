@@ -270,7 +270,7 @@ k.scene("start", async () => {
 
     playBtn.onClick(() => {
         k.play("confirm");
-        // k.go("main");
+        k.go("main");
     })
 
 });
