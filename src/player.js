@@ -5,15 +5,18 @@ export function makePlayer(k) {
         k.sprite("spaceship"),
         k.pos(64 * 2, k.center().y),
         k.area({ shape: new k.Rect(k.vec2(0, 0), 40, 20) }),
+        k.rotate(),
         k.anchor("center"),
         k.scale(2),
         k.body(),
         k.z(4),
         {
             isDead: false,
-            speed: 5,
+            speed: 2,
             down: false,
             up: false,
+            left: false,
+            right: false,
             inputControllers: [],
             dir: null,
             exhaustInit() {
@@ -27,47 +30,68 @@ export function makePlayer(k) {
                 ])
             },
             exhaust: null,
-            curTween: null,
-            dest: 64 * 2,
+            curTweenY: null,
+            curTweenX: null,
+            curTweenRot: null,
+
+            dest: k.vec2(k.center().x, k.center().y),
+            rotation: null,
             setControls() {
                 this.exhaust = this.exhaustInit();
-                const moveLogicY = () => {
-
-                    if (this.down) {
-                        this.dest = k.height() - 64
-                    } else if (this.up) {
-                        this.dest = 64
+                const rotateLogic = () => {
+                    if(this.curTweenRot) this.curTweenRot.cancel();
+                    if(this.pos.y <= 128  || this.pos.y >= k.height() - 128){
+                        this.rotation = 0
+                    } else {
+                        this.rotation = this.up ? -45 : this.down ? 45 : 0;
                     }
-
-                    if (this.curTween) this.curTween.cancel();
-
-                    this.curTween = k.tween(
-                        this.pos,
-                        k.vec2(this.pos.x, this.dest),
-                        this.speed,
-                        (p) => {
-                            if (this.dir == 1) {
-
-                            } else {
-
-                            }
-
-                            this.pos = p;
+                    this.curTweenRot = k.tween(
+                        this.angle,
+                        this.rotation,
+                        this.speed/10,
+                        (a)=>{
+                            this.angle = a
                         },
                         k.easings.linear
                     );
 
+                }
 
+                const moveLogicY = () => {
+                    if (this.curTweenY) this.curTweenY.cancel();
+                    this.curTweenY = k.tween(
+                        this.pos.y,
+                        this.dest.y,
+                        this.speed,
+                        (p) => {
+                            this.pos.y = p;
+                        },
+                        k.easings.linear
+                    );
                 };
+
+                const moveLogicX = () => {
+                    if (this.curTweenX) this.curTweenX.cancel();
+                    this.curTweenX = k.tween(
+                        this.pos.x,
+                        this.dest.x,
+                        100,
+                        (p) => {
+                            this.pos.x = p;
+                        },
+                        k.easings.linear
+                    );
+                };
+
+                moveLogicX();
 
                 this.inputControllers.push(
                     k.onKeyPress("s", () => {
                         if (!this.down) {
-                            this.exhaust.angle = 225;
-                            this.exhaust.pos = k.vec2(-40, -10);
                             this.dir = 1;
                             this.down = true;
                             this.up = false;
+                            this.dest.y = k.height() - 128;
                             moveLogicY();
                         }
                     })
@@ -76,20 +100,21 @@ export function makePlayer(k) {
                 this.inputControllers.push(
                     k.onKeyPress("w", () => {
                         if (!this.up) {
-                            this.exhaust.angle = -225;
-                            this.exhaust.pos = k.vec2(-40, 10)
                             this.dir = -1;
                             this.down = false;
                             this.up = true;
+                            this.dest.y = 128;
                             moveLogicY();
+
                         }
                     })
                 )
 
+                this.onUpdate(rotateLogic);
 
             },
 
-            death(pos){
+            death(pos) {
                 if (this.isDead) {
                     this.destroy();
                     k.add(
@@ -105,20 +130,20 @@ export function makePlayer(k) {
                     const restart = k.add(
                         makeRestart(k),
                     );
-        
+
                     const start = k.add(
                         makeStart(k)
                     );
-        
+
                     restart.onClick(() => {
                         k.go("main");
                     });
-        
+
                     start.onClick(() => {
                         k.go("start");
                     })
                 }
-                
+
             },
 
             disableControls() {

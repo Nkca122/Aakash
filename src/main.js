@@ -395,12 +395,7 @@ k.scene("main", () => {
     k.loop(1, () => {
         if (!player.isDead && survivalTime < 100) {
             survivalTime += 1;
-        }
-        bar.tick(survivalTime);
-    });
-
-    k.onUpdate(() => {
-        if (!player.isDead && survivalTime == 100) {
+        } else  if (!player.isDead && survivalTime == 100) {
             asteroidArray.forEach(asteroid => {
                 asteroid.destroy();
             });
@@ -420,8 +415,8 @@ k.scene("main", () => {
                 k.easings.linear
             );
         }
-    })
-
+        bar.tick(survivalTime);
+    });
 
 
     player.onCollide("asteroid", (asteroid) => {
