@@ -4,6 +4,7 @@ import { makePlayer } from "./player";
 import { makeAsteroid } from "./asteroid";
 import { makeRestart, makeStart } from "./buttons";
 import { makeAstronaut } from "./astronaut";
+import { progressBar } from "./progressbar";
 
 const k = kaplay({
     global: false,
@@ -11,8 +12,8 @@ const k = kaplay({
     height: 720,
     letterbox: true,
     backgroundAudio: true,
-    
-    
+
+
 });
 
 k.loadSprite("ocean", "./Ocean/ocean.png");
@@ -45,17 +46,9 @@ k.loadSprite("planet", "./Stars/planet.png", {
         }
     }
 });
-k.loadSprite("asteroid", "./Asteroid.png", {
-    sliceX: 8,
-    sliceY: 1,
-    anims: {
-        "destroy": {
-            from: 0,
-            to: 7,
-            speed: 2
-        }
-    }
-});
+k.loadSprite("asteroid1", "./asteroids/tile000.png");
+k.loadSprite("asteroid2", "./asteroids/tile001.png");
+k.loadSprite("asteroid3", "./asteroids/tile002.png");
 k.loadSprite("exhaust", "./Exhaust.png", {
     sliceX: 4,
     sliceY: 1,
@@ -76,7 +69,7 @@ k.loadSprite("explosion", "./Explosion.png", {
         "explode": {
             from: 0,
             to: 7,
-            speed: 2
+            speed: 5
         }
     },
 });
@@ -270,7 +263,7 @@ k.scene("start", async () => {
 
     playBtn.onClick(() => {
         k.play("confirm");
-        // k.go("main");
+        k.go("main");
     })
 
 });
@@ -376,10 +369,10 @@ k.scene("main", () => {
                     if (!asteroid.curTween) {
                         asteroid.curTween = k.tween(
                             asteroid.pos,
-                            k.vec2(-96, asteroidDestArray[i].y),
-                            5,
+                            k.vec2(-60, asteroidDestArray[i].y),
+                            asteroid.speed,
                             (p) => {
-                                if (asteroid.pos.x <= -96) {
+                                if (asteroid.pos.x <= -60) {
                                     asteroid.destroy();
                                     asteroidCt = (asteroidCt + 1) % maxAsteroidCt;
                                 } else {
@@ -397,46 +390,27 @@ k.scene("main", () => {
 
     });
 
-    let progressBar = map.add(
-        [
-            k.rect((100 - survivalTime) / 100 * k.width() * 0.8, 10, {
-                radius: 16
-            }),
-            k.outline(2, k.Color.fromHex("#000000")),
-            k.pos(k.center().x, 20),
-            k.anchor("center"),
-            k.area(),
-            k.color(survivalTime < 33 ? k.RED : survivalTime < 66 ? k.YELLOW : survivalTime <= 100 ? k.Color.fromHex("#008000") : null)
-
-        ]
-    )
+    let bar = progressBar(k);
 
     k.loop(1, () => {
         if (!player.isDead && survivalTime < 100) {
             survivalTime += 1;
-            progressBar.destroy();
-            progressBar = map.add(
-                [
-                    k.rect((100 - survivalTime) / 100 * k.width() * 0.8, 10, {
-                        radius: 16
-                    }),
-                    k.outline(2, k.Color.fromHex("#000000")),
-                    k.pos(k.center().x, 20),
-                    k.anchor("center"),
-                    k.area(),
-                    k.color(survivalTime < 33 ? k.RED : survivalTime < 66 ? k.YELLOW : survivalTime <= 100 ? k.Color.fromHex("#008000") : null)
-                ]
-            )
-        } else if (!player.isDead && survivalTime == 100) {
+        }
+        bar.tick(survivalTime);
+    });
+
+    k.onUpdate(() => {
+        if (!player.isDead && survivalTime == 100) {
             asteroidArray.forEach(asteroid => {
                 asteroid.destroy();
             });
             player.disableControls();
             if (player.curTween) player.curTween.cancel();
+
             player.curTween = k.tween(
                 player.pos,
                 k.vec2(k.width() + 64 * 2.5, k.center().y),
-                5,
+                2.5,
                 (p) => {
                     player.pos = p
                     if (player.pos.x >= k.width() + 64 * 2) {
@@ -446,43 +420,13 @@ k.scene("main", () => {
                 k.easings.linear
             );
         }
-    });
+    })
 
-    const exhaust = player.add([
-        k.sprite("exhaust", {
-            anim: "burn"
-        }),
-        k.pos(k.vec2(-45, 0)),
-        k.anchor("center")
-    ]);
 
 
     player.onCollide("asteroid", (asteroid) => {
         player.isDead = true;
-        player.sprite = "explosion";
-        player.scale = k.vec2(4, 4);
-        player.play("explode");
-        asteroid.play("destroy");
-
-        exhaust.destroy();
-
-        const restart = map.add(
-            makeRestart(k),
-        );
-
-        const start = map.add(
-            makeStart(k)
-        );
-
-        restart.onClick(() => {
-            k.go("main");
-        });
-
-        start.onClick(() => {
-            k.go("start");
-        })
-
-        player.disableControls();
+        player.death(player.pos);
         asteroidArray.forEach(asteroid => {
             if (asteroid && asteroid.curTween != null) {
                 asteroid.curTween.cancel();
@@ -490,6 +434,7 @@ k.scene("main", () => {
         });
 
     });
+
 
 });
 
@@ -884,7 +829,6 @@ k.scene("main2", () => {
 
                             astronaut.onCollide("asteroid", (asteroid) => {
                                 astronaut.isDead = true;
-                                asteroid.play("destroy");
                                 astronaut.destroy()
 
 
@@ -935,6 +879,8 @@ k.scene("main2", () => {
 
 
 });
+
+
 
 
 
