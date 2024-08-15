@@ -10,6 +10,9 @@ const k = kaplay({
     width: 1280,
     height: 720,
     letterbox: true,
+    backgroundAudio: true,
+    
+    
 });
 
 k.loadSprite("ocean", "./Ocean/ocean.png");
@@ -266,10 +269,8 @@ k.scene("start", async () => {
     ]);
 
     playBtn.onClick(() => {
-        k.play("confirm", {   //Fix Sounds
-            volume: 10
-        });
-        k.go("main");
+        k.play("confirm");
+        // k.go("main");
     })
 
 });
