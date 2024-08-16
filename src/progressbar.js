@@ -9,6 +9,7 @@ export function progressBar(k) {
             k.anchor("center"),
             k.area(),
             k.color(k.RED),
+            k.fixed(),
             {
                 tick(survivalTime) {
                     this.width = (100 - survivalTime) / 100 * k.width() * 0.8;
