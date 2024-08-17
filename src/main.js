@@ -417,8 +417,8 @@ k.scene("main", () => {
 
 });
 
-k.scene("main2", async () => {
-    k.setGravity(1200);
+k.scene("main2", () => {
+    k.camScale(0.5)
     const map = k.add(
         makeBackgroundSpace(k)
     );
@@ -426,7 +426,8 @@ k.scene("main2", async () => {
     map.add(
         [
             k.sprite("space"),
-            k.scale(2)
+            k.scale(2),
+            k.fixed()
         ]
     )
 
@@ -443,6 +444,7 @@ k.scene("main2", async () => {
                     k.pos(k.vec2(i == 0 ? 0 : k.width(), k.center().y + (Math.random() - 0.5) * (360 * 0.5 + 48))),
                     k.anchor("center"),
                     k.timer(),
+                    k.fixed(),
                     {
                         curTween: null
                     }
@@ -475,13 +477,12 @@ k.scene("main2", async () => {
             }),
             k.pos(k.center()),
             k.anchor("center"),
-            k.scale(4)
+            k.scale(4),
+            k.fixed()
         ]
     );
 
     barrier(k);
-
-
 
     k.onKeyPress("f11", async (key) => {
         if (await appWindow.isFullscreen()) {
@@ -521,39 +522,74 @@ k.scene("main2", async () => {
 
 
     let astronaut;
-    let lander;
     if (!rocket.curTween) {
         rocket.curTween = k.tween(
             rocket.pos,
             k.vec2(k.center().x, k.height() - 16 - 30),
             5,
             (p) => {
-                if (rocket.pos.x >= 64 * 2 && !lunarLander) {
-                    lander = map.add(
-                        lunarLander(k)
+                if (rocket.pos.x >= k.center().x) {
+                    astronaut = map.add(
+                        makeAstronaut(k)
                     );
 
-                    lander.init();
+                    astronaut.setControls(map);
 
                 } else {
                     rocket.pos = p;
+                    k.camPos(k.center().x, p.y);
                 }
             },
             k.easings.linear
         )
     }
 
-    if(!exhaust.curTween){
+    k.loop(1.5, () => {
+        if (astronaut) {
+            let maxAsteroidCt = 5;
+            if (!astronaut.isDead) {
+                let asteroidArray = map.get("asteroid");
+                console.log(asteroidArray);
+                if (asteroidArray.length < maxAsteroidCt) {
+                    map.add(makeAsteroid(k, k.vec2(-(k.width()+96)/2, astronaut.pos.y >= 668 ? astronaut.pos.y - 32 : astronaut.pos.y <= 48 ? astronaut.pos.y + 32 : astronaut.pos.y), 0.5));
+                }
+                asteroidArray.forEach(asteroid => {
+                    console.log(asteroid.pos)
+                    if (!asteroid.curTween) {
+                        asteroid.curTween = k.tween(
+                            asteroid.pos,
+                            asteroid.dest,
+                            asteroid.speed,
+                            (p) => {
+                                if (asteroid.pos.x <= -(k.width()+96)/2) {
+                                    asteroid.destroy();
+                                } else {
+                                    asteroid.pos = p;
+                                }
+                            },
+                            k.easings.linear
+                        );
+                    }
+                })
+            }
+        }
+    });
+
+    if (!exhaust.curTween) {
         exhaust.curTween = k.tween(
-            k.vec2(1,1),
-            k.vec2(0,0),
+            k.vec2(1, 1),
+            k.vec2(0, 0),
             5,
-            (s)=>{
+            (s) => {
                 exhaust.scale = s
             },
             k.easings.linear
         )
     }
+
+
+
+
 
 
 
@@ -566,4 +602,4 @@ k.scene("main2", async () => {
 
 
 
-k.go("main2");
+k.go("main");
