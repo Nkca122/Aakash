@@ -249,7 +249,6 @@ k.scene("start", async () => {
     ]);
 
     playBtn.onClick(() => {
-        k.play("confirm");
         k.go("main");
     })
 
@@ -344,12 +343,10 @@ k.scene("main", () => {
         let maxAsteroidCt = 5;
         if (!player.isDead && survivalTime != 100) {
             let asteroidArray = map.get("asteroid");
-            console.log(asteroidArray);
             if (asteroidArray.length < maxAsteroidCt) {
                 map.add(makeAsteroid(k, k.vec2(-96, player.pos.y)));
             }
             asteroidArray.forEach(asteroid => {
-                console.log(asteroid.pos)
                 if (!asteroid.curTween) {
                     asteroid.curTween = k.tween(
                         asteroid.pos,
@@ -549,12 +546,10 @@ k.scene("main2", () => {
             let maxAsteroidCt = 5;
             if (!astronaut.isDead) {
                 let asteroidArray = map.get("asteroid");
-                console.log(asteroidArray);
                 if (asteroidArray.length < maxAsteroidCt) {
                     map.add(makeAsteroid(k, k.vec2(-(k.width()+96)/2, astronaut.pos.y >= 668 ? astronaut.pos.y - 32 : astronaut.pos.y <= 48 ? astronaut.pos.y + 32 : astronaut.pos.y), 0.5));
                 }
                 asteroidArray.forEach(asteroid => {
-                    console.log(asteroid.pos)
                     if (!asteroid.curTween) {
                         asteroid.curTween = k.tween(
                             asteroid.pos,
@@ -602,4 +597,4 @@ k.scene("main2", () => {
 
 
 
-k.go("main");
+k.go("start");

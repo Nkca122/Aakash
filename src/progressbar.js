@@ -10,6 +10,7 @@ export function progressBar(k) {
             k.area(),
             k.color(k.RED),
             k.fixed(),
+            k.z(4),
             {
                 tick(survivalTime) {
                     this.width = (100 - survivalTime) / 100 * k.width() * 0.8;
@@ -17,7 +18,6 @@ export function progressBar(k) {
                     this.color = (survivalTime < 33 ? k.RED : survivalTime < 66 ? k.YELLOW : survivalTime <= 100 ? k.Color.fromHex("#008000") : null)
                 }
             }
-            
         ]
     );
 } 

@@ -6,7 +6,8 @@ export function makeRestart(k){
             k.pos(k.center().x - 16*8, k.center().y),
             k.area(),
             k.anchor("center"),
-            k.fixed()
+            k.fixed(),
+            k.z(4)
         ]
     )
 }
@@ -19,7 +20,8 @@ export function makeStart(k){
             k.pos(k.center().x + 16*8, k.center().y),
             k.area(),
             k.anchor("center"),
-            k.fixed()
+            k.fixed(),
+            k.z(4)
         ]
     )
 }
