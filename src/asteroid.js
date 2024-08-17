@@ -1,15 +1,22 @@
-export function makeAsteroid(k, pos){
+import { randomChoice } from "./utils";
+
+export function makeAsteroid(k, dest, scale = 1){
     return k.make(
         [
-            k.sprite("asteroid"),
-            k.scale(4),
-            k.pos(pos),
-            k.area({shape: new k.Rect(k.vec2(0, 0), 25, 25)}),
+            k.sprite(randomChoice(
+                "asteroid1", "asteroid2", "asteroid3"
+            )),
+            k.scale(2),
+            k.pos((k.width()+96)/scale, dest.y),
+            k.area({shape: new k.Rect(k.vec2(0, 0), 48, 48)}),
             k.anchor("center"),
+            k.rotate(Math.random() * 180),
             k.timer(),
             {
-                speed: -100,
-                curTween: null
+                speed: ((Math.random() - 0.5) * 2) + 5,
+                dest: dest,
+                curTween: null,
+
             },
             "asteroid"
         ]

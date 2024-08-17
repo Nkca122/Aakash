@@ -4,9 +4,9 @@ export function makeAstronaut(k, map) {
             k.sprite("astronaut", {
                 anim: "idle"
             }),
-            k.scale(3),
-            k.pos(128 + 80, k.height() - 40 - 16 * 2),
-            k.area({ shape: new k.Rect(k.vec2(0, 0), 14, 14) }),
+            k.scale(4),
+            k.pos(k.center().x, k.height() - 20 - 16 * 2),
+            k.area({ shape: new k.Rect(k.vec2(0, 0), 10, 16) }),
             k.body(),
             k.anchor("center"),
             {
@@ -14,21 +14,24 @@ export function makeAstronaut(k, map) {
                 speed: 100,
                 inputControllers: [],
                 dir: null,
-                curTween: null,
+                curTweenX: null,
+                curTweenY: null,
                 planted: false,
                 text: null,
                 progress: 0,
                 isDigging: false,
+                isFloating: false,
+                dest: k.vec2(k.center().x, k.height() - 20 - 16 * 2),
                 setControls() {
                     const moveLogicX = () => {
-                        if (this.curTween) this.curTween.cancel()
-                        this.curTween = k.tween(
+                        if (this.curTweenX) this.curTweenX.cancel()
+                        this.curTweenX = k.tween(
                             this.pos,
                             k.vec2(this.pos.x + this.speed * this.dir, this.pos.y),
                             0.5,
                             (p) => {
-                                this.scale.x = this.dir * 3
-                                if (this.curAnim() != "run" && this.isGrounded()) this.play("run");
+                                this.scale.x = this.dir * 4 * (this.angle > 0 ? -1 : 1)
+                                if (this.curAnim() != "run") this.play("run");
                                 if (this.dir == 1) {
                                     this.pos.x = Math.min(p.x, k.width() - 64)
                                 } else {
@@ -38,6 +41,28 @@ export function makeAstronaut(k, map) {
                             k.easings.linear
                         );
                     }
+
+                    const moveLogicY = () => {
+                        if (this.curTweenY) this.curTweenY.cancel();
+                        this.curTweenY = k.tween(
+                            this.pos.y,
+                            this.dest.y,
+                            3,
+                            (p) => {
+                                if(this.pos.y != this.dest.y){
+                                    this.pos.y = p;
+                                    k.camPos(k.center().x, p);
+                                } else {
+                                    this.isFloating = false;
+                                }
+                                
+                            },
+                            k.easings.linear
+                        );
+
+
+                    }
+
 
                     this.inputControllers.push(
                         k.onKeyDown("d", () => {
@@ -54,17 +79,18 @@ export function makeAstronaut(k, map) {
                     );
 
                     this.inputControllers.push(
-                        k.onKeyPress("w", async () => {
-                            if (this.isGrounded()) {
-                                this.jump({
-                                    force: 400
-                                });
-                                this.play("jump");
-                                k.wait(1.4, () => {
-                                    this.play("idle")
-                                })
-
-
+                        k.onKeyPress(["w", "space"], () => {
+                            if (!this.isFloating) {
+                                if (this.pos.y >= 668) {
+                                    this.dest.y = 16;
+                                    this.angle = 180;
+                                    this.isFloating = true;
+                                } else if (this.pos.y <= 48) {
+                                    this.dest.y = k.height() - 16;
+                                    this.isFloating = true;
+                                    this.angle = 0;
+                                }
+                                moveLogicY();
                             }
                         })
                     );
@@ -72,7 +98,7 @@ export function makeAstronaut(k, map) {
                     this.inputControllers.push(
                         k.onKeyPress("f", () => {
                             if (this.pos.x >= 128 + 80 && this.pos.x <= k.width() - 128 - 80 && !this.planted) {
-                                map.add(
+                                k.add(
                                     [
                                         k.sprite("flag", {
                                             anim: "wave"
@@ -105,23 +131,23 @@ export function makeAstronaut(k, map) {
                                         ]
                                     )
                                 }
-                                k.wait(2, ()=>{
+                                k.wait(2, () => {
                                     this.progress += 10;
                                     this.play("idle");
-                                    if(this.text){
+                                    if (this.text) {
                                         this.text.destroy();
                                     }
                                     this.text = null;
                                     this.isDigging = false;
                                 })
-                            } 
+                            }
 
                         })
                     );
 
                     this.inputControllers.push(
                         k.onKeyRelease(["d", "a"], () => {
-                            if (this.curTween) this.curTween.cancel();
+                            if (this.curTweenX) this.curTweenX.cancel();
                             if (this.curAnim() != "idle") {
                                 this.play("idle");
                             }
@@ -130,7 +156,7 @@ export function makeAstronaut(k, map) {
 
                 },
 
-                disableControls(){
+                disableControls() {
                     this.inputControllers.forEach(input => {
                         input.cancel();
                     });
