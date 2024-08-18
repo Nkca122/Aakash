@@ -1,3 +1,5 @@
+import { makeRestart } from "./buttons";
+import { makeStart } from "./buttons";
 export function makeAstronaut(k, map) {
     return k.make(
         [
@@ -9,6 +11,8 @@ export function makeAstronaut(k, map) {
             k.area({ shape: new k.Rect(k.vec2(0, 0), 10, 16) }),
             k.body(),
             k.anchor("center"),
+            k.opacity(1),
+            k.z(6),
             {
                 isDead: false,
                 speed: 100,
@@ -16,12 +20,14 @@ export function makeAstronaut(k, map) {
                 dir: null,
                 curTweenX: null,
                 curTweenY: null,
+                curTweenRot: null,
                 planted: false,
                 text: null,
                 progress: 0,
                 isDigging: false,
                 isFloating: false,
                 dest: k.vec2(k.center().x, k.height() - 20 - 16 * 2),
+                won: false,
                 setControls() {
                     const moveLogicX = () => {
                         if (this.curTweenX) this.curTweenX.cancel()
@@ -49,13 +55,13 @@ export function makeAstronaut(k, map) {
                             this.dest.y,
                             3,
                             (p) => {
-                                if(this.pos.y != this.dest.y){
+                                if (this.pos.y != this.dest.y) {
                                     this.pos.y = p;
                                     k.camPos(k.center().x, p);
                                 } else {
                                     this.isFloating = false;
                                 }
-                                
+
                             },
                             k.easings.linear
                         );
@@ -79,69 +85,37 @@ export function makeAstronaut(k, map) {
                     );
 
                     this.inputControllers.push(
-                        k.onKeyPress(["w", "space"], () => {
+                        k.onKeyPress("w", () => {
                             if (!this.isFloating) {
                                 if (this.pos.y >= 668) {
-                                    this.dest.y = 16;
-                                    this.angle = 180;
+                                    this.dest.y = 48;
                                     this.isFloating = true;
+                                    if (this.curTweenRot) this.curTweenRot.cancel();
+                                    this.curTweenRot = k.tween(
+                                        0,
+                                        180,
+                                        3,
+                                        (a) => {
+                                            this.angle = a
+                                        },
+                                        k.easings.linear
+                                    )
                                 } else if (this.pos.y <= 48) {
-                                    this.dest.y = k.height() - 16;
+                                    this.dest.y = 668;
                                     this.isFloating = true;
-                                    this.angle = 0;
+                                    if (this.curTweenRot) this.curTweenRot.cancel();
+                                    this.curTweenRot = k.tween(
+                                        180,
+                                        0,
+                                        3,
+                                        (a) => {
+                                            this.angle = a
+                                        },
+                                        k.easings.linear
+                                    )
                                 }
                                 moveLogicY();
                             }
-                        })
-                    );
-
-                    this.inputControllers.push(
-                        k.onKeyPress("f", () => {
-                            if (this.pos.x >= 128 + 80 && this.pos.x <= k.width() - 128 - 80 && !this.planted) {
-                                k.add(
-                                    [
-                                        k.sprite("flag", {
-                                            anim: "wave"
-                                        }),
-                                        k.pos(k.vec2(this.pos.x + (!this.dir ? 1 : this.dir) * 20, k.height() - 40 - 16)),
-                                        k.anchor("center"),
-                                        k.scale(4)
-
-                                    ]
-                                )
-                                this.planted = true;
-                            }
-
-                        })
-                    );
-
-                    this.inputControllers.push(
-                        k.onKeyPress("e", () => {
-                            if (this.pos.x <= k.width() && this.pos.x >= k.width() - 128 - 34 && !this.isDigging && this.progress < 100) {
-                                this.isDigging = true;
-                                this.play("fix");
-                                if (!this.text) {
-                                    this.text = this.add(
-                                        [
-                                            k.text("Digging...", { size: 6 }),
-                                            k.pos(k.vec2(0, -10)),
-                                            k.anchor("center"),
-                                            k.scale(1),
-                                            "status"
-                                        ]
-                                    )
-                                }
-                                k.wait(2, () => {
-                                    this.progress += 10;
-                                    this.play("idle");
-                                    if (this.text) {
-                                        this.text.destroy();
-                                    }
-                                    this.text = null;
-                                    this.isDigging = false;
-                                })
-                            }
-
                         })
                     );
 
@@ -160,8 +134,108 @@ export function makeAstronaut(k, map) {
                     this.inputControllers.forEach(input => {
                         input.cancel();
                     });
+                },
+
+                death(pos) {
+                    if (this.isDead) {
+                        this.disableControls();
+                        if (this.curTweenX) this.curTweenX.cancel();
+                        if (this.curTweenRot) this.curTweenRot.cancel();
+                        if (this.curTweenY) this.curTweenY.cancel();
+                        this.destroy();
+                        const explosion = k.add(
+                            [
+                                k.sprite("explosion", {
+                                    anim: "explode"
+                                }),
+                                k.anchor("center"),
+                                k.pos(pos.x, pos.y),
+                                k.scale(4),
+                            ]
+                        );
+
+                        k.wait(2, () => {
+                            if (explosion.curAnim() != "explode") {
+                                const restart = k.add(
+                                    makeRestart(k),
+                                );
+                                const start = k.add(
+                                    makeStart(k)
+                                );
+                                restart.onClick(() => {
+                                    k.go("main2");
+                                });
+                                start.onClick(() => {
+                                    k.go("start");
+                                })
+                            }
+                        })
+
+                    }
+                },
+
+                victory() {
+                    this.won = true
+                    this.scale = k.vec2(4)
+                    this.disableControls();
+                    if (this.curTweenX) this.curTweenX.cancel();
+                    if (this.curTweenY) this.curTweenY.cancel();
+                    if (this.curTweenRot) this.curTweenRot.cancel();
+                    if(this.curAnim() != "run") this.play("run");
+                    this.add(
+                        [
+                            k.sprite("exhaust", {
+                                anim: "burn"
+                            }),
+                            k.scale(0.25),
+                            k.anchor("center"),
+                            k.pos(-10, 0),
+                            k.rotate(180)
+                        ]
+                    )
+
+
+
+                    this.curTweenRot = k.tween(
+                        this.angle,
+                        0,
+                        4,
+                        (a) => {
+                            this.angle = a;
+                        },
+                        k.easings.linear
+                    );
+
+                    this.curTweenX = k.tween(
+                        this.pos.x,
+                        (k.center().x + k.width()) * 3 / 4 + 10,
+                        4,
+                        (p) => {
+                            this.pos.x = p;
+                        },
+                        k.easings.linear
+                    );
+
+                    this.curTweenY = k.tween(
+                        this.pos.y,
+                        k.center().y,
+                        4,
+                        (p) => {
+                            this.pos.y = p;
+                        },
+                        k.easings.linear
+                    );
+
+                    k.wait(4, () => {
+                        this.destroy();
+                    })
+
+
+
                 }
             },
+
+            "astronaut"
 
 
 

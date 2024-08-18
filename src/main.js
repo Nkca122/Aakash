@@ -2,19 +2,20 @@ import { appWindow } from "@tauri-apps/api/window";
 import kaplay from "kaplay";
 import { makePlayer } from "./player";
 import { makeAsteroid } from "./asteroid";
-import { makeRestart, makeStart } from "./buttons";
 import { makeAstronaut } from "./astronaut";
 import { progressBar } from "./progressbar";
 import { barrier } from "./barrier";
-
+import { makeAlien } from "./alien";
+import { makeRare } from "./rare";
+import { saveSystem } from "./save";
+import { makeScoreBox } from "./scoreBox";
+import { controls } from "./controls";
 const k = kaplay({
-    global: false,
+    global: true,
     width: 1280,
     height: 720,
     letterbox: true,
-    backgroundAudio: true,
-
-
+    
 });
 
 k.loadSprite("ocean", "./Ocean/ocean.png");
@@ -23,18 +24,6 @@ k.loadSprite("cloud1", "./Clouds/cloud1.png");
 k.loadSprite("cloud2", "./Clouds/cloud2.png");
 k.loadSprite("cloud3", "./Clouds/cloud3.png");
 k.loadSprite("spaceship", "./Ship1.png");
-k.loadSprite("star", "./Stars/Stars.png", {
-    sliceX: 2,
-    sliceY: 1,
-    anims: {
-        "twinkle": {
-            from: 0,
-            to: 1,
-            loop: true,
-            speed: 1
-        }
-    }
-});
 k.loadSprite("space", "./Stars/Background.png");
 k.loadSprite("planet", "./Stars/planet.png", {
     sliceX: 77,
@@ -47,6 +36,7 @@ k.loadSprite("planet", "./Stars/planet.png", {
         }
     }
 });
+k.loadSprite("surface", "./surface.png");
 k.loadSprite("asteroid1", "./asteroids/tile000.png");
 k.loadSprite("asteroid2", "./asteroids/tile001.png");
 k.loadSprite("asteroid3", "./asteroids/tile002.png");
@@ -76,21 +66,7 @@ k.loadSprite("explosion", "./Explosion.png", {
 });
 k.loadSprite("restart", "./Buttons/restart.png");
 k.loadSprite("start", "./Buttons/start.png");
-k.loadSprite("moon", "./MoonSurface.png");
 k.loadSprite("mountain", "./Mountains.png");
-k.loadSprite("flag", "./flags.png", {
-    sliceX: 2,
-    sliceY: 1,
-    anims: {
-        "wave": {
-            from: 0,
-            to: 1,
-            loop: true,
-            speed: 2
-        }
-    }
-});
-
 k.loadSprite("astronaut", "./astronaut.png", {
     sliceX: 14,
     sliceY: 4,
@@ -121,13 +97,49 @@ k.loadSprite("astronaut", "./astronaut.png", {
 
 k.loadSprite("rock", "./rock.png");
 k.loadSprite("barrier", "./barrier.png");
+k.loadSprite("stalactite", "./stalactite.png");
+k.loadSprite("alien", "./alien.png", {
+    sliceX: 4,
+    sliceY: 1,
+    anims: {
+        "walk": {
+            from: 0,
+            to: 3,
+            speed: 10,
+            loop: true
+        },
+        "idle": {
+            from: 0,
+            to: 0,
+            loop: true
+        }
+    }
+});
+k.loadSprite("rare", "./rare.png", {
+    sliceX: 7,
+    sliceY: 1,
+    anims: {
+        "elec": {
+            from: 0,
+            to: 6,
+            loop: true
+        }
+    }
+});
+
+k.loadSprite("scaffold", "./scaffold.png");
+k.loadSound("background", "./back.mp3");
+k.play("background")
+
+let rareScore = 0;
+let alienScore = 0;
 
 function makeBackgroundEarth(k) {
     const background = k.make(
         [
             k.rect(k.width(), k.height()),
             k.color(k.Color.fromHex("#FA5F55")),
-            k.z(-1)
+
         ]
     )
 
@@ -139,7 +151,7 @@ function makeBackgroundSpace(k) {
         [
             k.rect(k.width(), k.height()),
             k.color(k.Color.fromHex("#000000")),
-            k.z(-1)
+
         ]
     )
 
@@ -149,6 +161,12 @@ function makeBackgroundSpace(k) {
 
 
 k.scene("start", async () => {
+
+    await saveSystem.load();
+    if (!saveSystem.data.maxScore) {
+        saveSystem.data.maxScore = 0;
+        await saveSystem.save();
+    }
 
     const map = k.add(
         makeBackgroundEarth(k)
@@ -161,74 +179,46 @@ k.scene("start", async () => {
         }
         appWindow.setFullscreen(true);
     });
-    //Background
+
     map.add(
         [
             k.sprite("ocean"),
             k.scale(k.vec2(0.56, 0.56)),
-            k.z(-1)
+            k.fixed()
+
         ]
     );
 
-    //Clouds
-    const cloud1 = map.add(
+    map.add([
+        k.sprite("scaffold"),
+        k.scale(2),
+        k.pos(0, k.height() - 96),
+        k.fixed()
+    ])
+
+    const rocket = map.add(
         [
-            k.sprite("cloud0"),
+            k.sprite("spaceship"),
+            k.pos(0, k.height() - 48 - 45),
             k.scale(2),
-            k.pos(-45 * 4, 21 * 2 + 100),
-            k.anchor("center"),
+            k.rotate(-90),
             {
-                speed: 60
+                curTween: null
             }
-        ],
-    );
+        ]
+    )
 
-    const cloud2 = map.add(
+    const astronaut = rocket.add(
         [
-            k.sprite("cloud1"),
-            k.scale(1),
-            k.pos(45 * 2 + 100, 21 * 2 + 200),
+            k.sprite("astronaut", {
+                anim: "idle"
+            }),
             k.anchor("center"),
-            {
-                speed: 60
-            }
-        ],
-    );
-
-    const cloud3 = map.add(
-        [
-            k.sprite("cloud3"),
-            k.scale(1.5),
-            k.pos(45, 21 * 2 + 200),
-            k.anchor("center"),
-            {
-                speed: 60
-            }
-        ],
-    );
-
-    cloud1.onUpdate(() => {
-        cloud1.move(cloud1.speed, 0);
-        if (cloud1.pos.x > k.width() + 45 * 4) {
-            cloud1.pos.x = -45 * 4;
-        }
-    });
-
-    cloud2.onUpdate(() => {
-        cloud2.move(cloud2.speed, 0);
-        if (cloud2.pos.x > k.width() + 45 * 2) {
-            cloud2.pos.x = -45 * 2;
-        }
-    });
-
-    cloud3.onUpdate(() => {
-        cloud3.move(cloud3.speed, 0);
-        if (cloud3.pos.x > k.width() + 45 * 2) {
-            cloud3.pos.x = -45 * 2;
-        }
-    });
-
-
+            k.pos(18, 20),
+            k.rotate(90),
+            k.scale(2)
+        ]
+    )
 
     const playBtn = map.add(
         [
@@ -249,16 +239,85 @@ k.scene("start", async () => {
     ]);
 
     playBtn.onClick(() => {
-        k.go("main");
+        playBtn.destroy();
+        astronaut.destroy();
+        k.wait(0.5, () => {
+            const exhaust = rocket.add(
+                [
+                    k.sprite("exhaust", {
+                        anim: "burn"
+                    }),
+                    k.anchor("center"),
+                    k.pos(-35, 32),
+                    k.scale(2),
+                ]
+            );
+
+            rocket.curTween = k.tween(
+                rocket.pos,
+                k.vec2(0, -122),
+                5,
+                (p) => {
+                    if (rocket.pos.y <= -122) {
+                        k.go("controls");
+                    }
+                    rocket.pos = p
+                },
+                k.easings.linear
+            )
+        })
+
     })
 
 });
+
+k.scene("controls", ()=>{
+    k.setGravity(0);
+    const map = k.add(
+        makeBackgroundEarth(k)
+    );
+
+    map.add(
+        [
+            k.sprite("ocean"),
+            k.scale(k.vec2(0.56, 0.56)),
+
+        ]
+    );
+
+    map.add([
+        k.sprite("scaffold"),
+        k.scale(2),
+        k.pos(0, k.height() - 96)
+    ])
+
+    k.onKeyPress("f11", async (key) => {
+        if (await appWindow.isFullscreen()) {
+            await appWindow.setFullscreen(false);
+            return;
+        }
+        appWindow.setFullscreen(true);
+    });
+
+
+
+
+   
+    k.wait(1, ()=>{
+        map.add(
+            controls(k, k.center())
+        )
+    })
+    
+})
 
 
 
 
 k.scene("main", () => {
-    k.setGravity(0)
+    k.setGravity(0);
+    k.camScale(0.5);
+    rareScore = 0;
     let survivalTime = 0;
 
     const map = k.add(
@@ -271,46 +330,7 @@ k.scene("main", () => {
             k.scale(2),
             k.fixed()
         ]
-    )
-
-    let starArray = [];
-    for (let i = 0; i < 2; i++) {
-        starArray.push(
-            map.add(
-                [
-                    k.sprite("star", {
-                        anim: "twinkle"
-                    }),
-                    k.scale(0.5),
-                    k.area(),
-                    k.pos(k.vec2(i == 0 ? 0 : k.width(), k.center().y + (Math.random() - 0.5) * (360 * 0.5 + 48))),
-                    k.anchor("center"),
-                    k.fixed(),
-                    k.timer(),
-                    {
-                        curTween: null
-                    }
-                ]
-            )
-        );
-    }
-
-
-    k.loop(5, () => {
-        starArray.forEach(star => {
-            if (star.curTween) star.curTween.cancel();
-            star.curTween = k.tween(
-                star.pos,
-                k.vec2(star.pos.x, k.center().y + (Math.random() - 0.5) * (360 * 0.5 + 48)),
-                4.99,
-                (p) => {
-                    star.pos = p
-                },
-                k.easings.linear
-            );
-        })
-
-    })
+    );
 
     map.add(
         [
@@ -323,8 +343,9 @@ k.scene("main", () => {
         ]
     );
 
-
     barrier(k);
+
+
 
     k.onKeyPress("f11", async (key) => {
         if (await appWindow.isFullscreen()) {
@@ -339,12 +360,13 @@ k.scene("main", () => {
     );
 
     player.setControls();
+
     k.loop(1.5, () => {
         let maxAsteroidCt = 5;
-        if (!player.isDead && survivalTime != 100) {
+        if (!player.isDead && survivalTime != 30) {
             let asteroidArray = map.get("asteroid");
             if (asteroidArray.length < maxAsteroidCt) {
-                map.add(makeAsteroid(k, k.vec2(-96, player.pos.y)));
+                map.add(makeAsteroid(k, k.vec2((-k.width() + 64) / 2, player.pos.y), 0.5));
             }
             asteroidArray.forEach(asteroid => {
                 if (!asteroid.curTween) {
@@ -353,7 +375,7 @@ k.scene("main", () => {
                         asteroid.dest,
                         asteroid.speed,
                         (p) => {
-                            if (asteroid.pos.x <= -96) {
+                            if (asteroid.pos.x <= (-k.width() + 64) / 2) {
                                 asteroid.destroy();
                             } else {
                                 asteroid.pos = p;
@@ -370,9 +392,9 @@ k.scene("main", () => {
     let bar = progressBar(k);
 
     k.loop(1, () => {
-        if (!player.isDead && survivalTime < 100) {
+        if (!player.isDead && survivalTime != 30) {
             survivalTime += 1;
-        } else if (!player.isDead && survivalTime == 100) {
+        } else if (!player.isDead && survivalTime == 30 && !player.won) {
             let asteroidArray = map.get("asteroid");
             if (asteroidArray.length) {
                 asteroidArray.forEach(asteroid => {
@@ -381,8 +403,32 @@ k.scene("main", () => {
             }
             player.victory();
         }
-        bar.tick(survivalTime);
+        bar.tick(survivalTime, 30);
     });
+
+
+    if (!player.isDead) {
+        for (let i = 0; i < 5; i++) {
+            map.add(
+                makeRare(k, i, 5)
+            );
+        }
+
+    }
+
+    player.onCollide("rare", (rare) => {
+        rareScore += 50;
+        map.add(
+            [
+                k.text("+50", { size: 32 }),
+                k.anchor("center"),
+                k.pos(rare.pos),
+                k.opacity(),
+                k.lifespan(0.5)
+            ]
+        );
+        rare.destroy();
+    })
 
 
     player.onCollide("asteroid", () => {
@@ -415,10 +461,14 @@ k.scene("main", () => {
 });
 
 k.scene("main2", () => {
-    k.camScale(0.5)
+    k.camScale(0.5);
+    alienScore = 0;
+    let survivalTime = 0;
     const map = k.add(
         makeBackgroundSpace(k)
     );
+
+    let bar;
 
     map.add(
         [
@@ -428,44 +478,8 @@ k.scene("main2", () => {
         ]
     )
 
-    let starArray = [];
-    for (let i = 0; i < 2; i++) {
-        starArray.push(
-            map.add(
-                [
-                    k.sprite("star", {
-                        anim: "twinkle"
-                    }),
-                    k.scale(0.5),
-                    k.area(),
-                    k.pos(k.vec2(i == 0 ? 0 : k.width(), k.center().y + (Math.random() - 0.5) * (360 * 0.5 + 48))),
-                    k.anchor("center"),
-                    k.timer(),
-                    k.fixed(),
-                    {
-                        curTween: null
-                    }
-                ]
-            )
-        );
-    }
 
 
-    k.loop(5, () => {
-        starArray.forEach(star => {
-            if (star.curTween) star.curTween.cancel();
-            star.curTween = k.tween(
-                star.pos,
-                k.vec2(star.pos.x, k.center().y + (Math.random() - 0.5) * (360 * 0.5 + 48)),
-                4.99,
-                (p) => {
-                    star.pos = p
-                },
-                k.easings.linear
-            );
-        })
-
-    })
 
     map.add(
         [
@@ -475,11 +489,8 @@ k.scene("main2", () => {
             k.pos(k.center()),
             k.anchor("center"),
             k.scale(4),
-            k.fixed()
         ]
     );
-
-    barrier(k);
 
     k.onKeyPress("f11", async (key) => {
         if (await appWindow.isFullscreen()) {
@@ -489,17 +500,25 @@ k.scene("main2", () => {
         appWindow.setFullscreen(true);
     });
 
+
+    barrier(k);
+
+
+    let astronaut;
+
+
     const rocket = map.add(
         [
             k.sprite("spaceship"),
-            k.pos(-64 * 2, k.center().y),
+            k.pos(k.center().x - k.width() - 45, k.center().y),
             k.area({ shape: new k.Rect(k.vec2(0, 0), 40, 20) }),
             k.anchor("center"),
-            k.z(3),
+            (3),
             k.scale(k.vec2(2, 2)),
             k.offscreen({ destroy: false }),
             {
-                curTween: null
+                curTween: null,
+                curTweenScale: null
             }
         ]
     );
@@ -509,7 +528,7 @@ k.scene("main2", () => {
             k.sprite("exhaust", {
                 anim: "burn"
             }),
-            k.pos(k.vec2(-45, 0)),
+            k.pos(k.vec2(-50, 0)),
             k.anchor("center"),
             {
                 curTween: null
@@ -518,11 +537,10 @@ k.scene("main2", () => {
     )
 
 
-    let astronaut;
     if (!rocket.curTween) {
         rocket.curTween = k.tween(
             rocket.pos,
-            k.vec2(k.center().x, k.height() - 16 - 30),
+            k.vec2(k.center().x, k.height() - 16 - 28),
             5,
             (p) => {
                 if (rocket.pos.x >= k.center().x) {
@@ -530,7 +548,114 @@ k.scene("main2", () => {
                         makeAstronaut(k)
                     );
 
+                    bar = progressBar(k);
+                    k.loop(1, () => {
+                        if (!astronaut.isDead && survivalTime != 30) {
+                            survivalTime += 1;
+                        } else if (!astronaut.isDead && survivalTime == 30 && !astronaut.won) {
+                            astronaut.victory();
+
+                            map.get("asteroid").forEach(asteroid => {
+                                asteroid.destroy();
+                            });
+                            map.get("alien", alien => {
+                                alien.destroy();
+                            })
+                            k.wait(4, () => {
+                                if (rocket.curTween) rocket.curTween.cancel();
+                                rocket.curTween = k.tween(
+                                    rocket.pos,
+                                    k.vec2((k.center().x + k.width()) + 135, k.center().y),
+                                    2,
+                                    (p) => {
+                                        if (rocket.pos.x >= k.center().x + k.width() + 135) {
+                                            k.go("end");
+                                        } else {
+                                            rocket.pos = p
+                                        }
+                                    },
+                                    k.easings.linear
+                                )
+                            })
+
+                        }
+
+                        if (!astronaut.isDead && survivalTime == 25) {
+                            if (rocket.curTween) rocket.curTween.cancel();
+                            rocket.curTween = k.tween(
+                                rocket.pos,
+                                k.vec2((k.center().x + k.width()) * (3 / 4), k.center().y),
+                                10,
+                                (p) => {
+                                    rocket.pos = p
+                                },
+                                k.easings.linear
+                            )
+
+                            if (exhaust.curTween) exhaust.curTween.cancel();
+                            exhaust.curTween = k.tween(
+                                0,
+                                1,
+                                10,
+                                (s) => {
+                                    exhaust.scale = s
+                                },
+                                k.easings.linear
+                            )
+                        }
+                        bar.tick(survivalTime, 30);
+                    })
+
+                    k.loop(5, () => {
+                        if (!astronaut.isDead && !astronaut.won) {
+                            map.add(
+                                makeAlien(k)
+                            );
+                            map.get("alien").forEach(alien => {
+                                alien.moves();
+                            })
+                        }
+                    })
+
                     astronaut.setControls(map);
+                    astronaut.onCollide("asteroid", () => {
+                        astronaut.isDead = true;
+                        astronaut.death(astronaut.pos);
+                        let asteroidArray = map.get("asteroid");
+                        if (asteroidArray.length) {
+                            asteroidArray.forEach(asteroid => {
+                                if (asteroid && asteroid.curTween != null) {
+                                    asteroid.curTween.cancel();
+                                }
+                            });
+                            if (rocket.curTween) rocket.curTween.cancel();
+                            if (exhaust.curTween) exhaust.curTween.cancel();
+                        }
+
+                        map.get("alien").forEach(alien => {
+                            alien.curTween.cancel();
+                            alien.play("idle")
+                        })
+                    });
+
+                    astronaut.onCollideUpdate("alien", (alien) => {
+                        if (k.isKeyPressed(["e", "space"]) && !alien.isInspected) {
+                            alien.isInspected = true;
+                            alienScore += 100;
+                            map.add(
+                                [
+                                    k.text("+100", { size: 32 }),
+                                    k.anchor("center"),
+                                    k.pos(alien.pos),
+                                    k.opacity(),
+                                    k.lifespan(1)
+                                ]
+                            );
+                            k.wait(1, () => {
+                                alien.isInspected = false;
+                            })
+                        }
+                    })
 
                 } else {
                     rocket.pos = p;
@@ -540,35 +665,6 @@ k.scene("main2", () => {
             k.easings.linear
         )
     }
-
-    k.loop(1.5, () => {
-        if (astronaut) {
-            let maxAsteroidCt = 5;
-            if (!astronaut.isDead) {
-                let asteroidArray = map.get("asteroid");
-                if (asteroidArray.length < maxAsteroidCt) {
-                    map.add(makeAsteroid(k, k.vec2(-(k.width()+96)/2, astronaut.pos.y >= 668 ? astronaut.pos.y - 32 : astronaut.pos.y <= 48 ? astronaut.pos.y + 32 : astronaut.pos.y), 0.5));
-                }
-                asteroidArray.forEach(asteroid => {
-                    if (!asteroid.curTween) {
-                        asteroid.curTween = k.tween(
-                            asteroid.pos,
-                            asteroid.dest,
-                            asteroid.speed,
-                            (p) => {
-                                if (asteroid.pos.x <= -(k.width()+96)/2) {
-                                    asteroid.destroy();
-                                } else {
-                                    asteroid.pos = p;
-                                }
-                            },
-                            k.easings.linear
-                        );
-                    }
-                })
-            }
-        }
-    });
 
     if (!exhaust.curTween) {
         exhaust.curTween = k.tween(
@@ -584,12 +680,115 @@ k.scene("main2", () => {
 
 
 
-
-
-
-
-
+    k.loop(1, () => {
+        if (astronaut) {
+            let maxAsteroidCt = 5;
+            if (!astronaut.isDead && !astronaut.won) {
+                let asteroidArray = map.get("asteroid");
+                if (asteroidArray.length < maxAsteroidCt) {
+                    map.add(makeAsteroid(k, k.vec2(-(k.width() + 64) / 2, astronaut.pos.y >= 668 ? astronaut.pos.y - 32 : astronaut.pos.y <= 48 ? astronaut.pos.y + 32 : astronaut.pos.y), 0.5));
+                }
+                asteroidArray.forEach(asteroid => {
+                    if (!asteroid.curTween) {
+                        asteroid.curTween = k.tween(
+                            asteroid.pos,
+                            asteroid.dest,
+                            asteroid.speed,
+                            (p) => {
+                                if (asteroid.pos.x <= -(k.width() + 64) / 2) {
+                                    asteroid.destroy();
+                                } else {
+                                    asteroid.pos = p;
+                                }
+                            },
+                            k.easings.linear
+                        );
+                    }
+                })
+            }
+        }
+    });
 });
+
+k.scene("end", async () => {
+    const map = k.add(
+        makeBackgroundEarth(k)
+    );
+
+
+    k.onKeyPress("f11", async (key) => {
+        if (await appWindow.isFullscreen()) {
+            await appWindow.setFullscreen(false);
+            return;
+        }
+        appWindow.setFullscreen(true);
+    });
+
+    map.add(
+        [
+            k.sprite("ocean"),
+            k.scale(k.vec2(0.56, 0.56)),
+
+        ]
+    );
+
+    const rocket = map.add(
+        [
+            k.sprite("spaceship"),
+            k.pos(0, -122),
+            k.scale(2),
+            k.rotate(-90),
+            {
+                curTween: null
+            }
+        ]
+    )
+
+    rocket.curTween = k.tween(
+        rocket.pos,
+        k.vec2(rocket.pos.x, k.height() - 48 - 45),
+        5,
+        (p) => {
+            if (rocket.pos.y >= k.height() - 48 - 45) {
+                k.wait(0.5, () => {
+                    exhaust.destroy();
+                    rocket.add(
+                        [
+                            k.sprite("astronaut", {
+                                anim: "idle"
+                            }),
+                            k.anchor("center"),
+                            k.pos(18, 20),
+                            k.rotate(90),
+                            k.scale(2)
+                        ]
+                    )
+                })
+            }
+            rocket.pos = p
+        },
+        k.easings.linear
+    )
+
+    const exhaust = rocket.add(
+        [
+            k.sprite("exhaust", {
+                anim: "burn"
+            }),
+            k.anchor("center"),
+            k.pos(-35, 32),
+            k.scale(2),
+        ]
+    )
+
+    map.add([
+        k.sprite("scaffold"),
+        k.scale(2),
+        k.pos(0, k.height() - 96)
+    ])
+
+    k.add(await makeScoreBox(k, k.center(), alienScore + rareScore));
+})
 
 
 

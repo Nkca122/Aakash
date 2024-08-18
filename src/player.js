@@ -3,14 +3,17 @@ import { makeStart } from "./buttons";
 export function makePlayer(k) {
     return k.make([
         k.sprite("spaceship"),
-        k.pos(64 * 2, k.center().y),
+        k.pos(k.center().x - k.width() - 90, k.center().y),
         k.area({ shape: new k.Rect(k.vec2(0, 0), 40, 20) }),
         k.rotate(),
         k.anchor("center"),
         k.scale(2),
         k.body(),
+        k.opacity(10),
+        k.z(2),
         {
             isDead: false,
+            won: false,
             speed: 2,
             down: false,
             up: false,
@@ -25,12 +28,11 @@ export function makePlayer(k) {
                     k.scale(k.vec2(-1, 1))
                 ])
             },
-
             curTweenY: null,
             curTweenX: null,
             curTweenRot: null,
 
-            dest: k.vec2(k.center().x, k.center().y),
+            dest: k.vec2(k.center().x + k.width(), k.center().y),
             rotation: null,
 
             setControls() {
@@ -67,8 +69,8 @@ export function makePlayer(k) {
                     if (this.curTweenX) this.curTweenX.cancel();
                     this.curTweenX = k.tween(
                         this.pos.x,
-                        this.dest.x,
-                        100,
+                        this.dest.x * (3/4),
+                        30,
                         (p) => {
                             this.pos.x = p;
                             k.camPos(k.center().x, this.pos.y);
@@ -109,20 +111,33 @@ export function makePlayer(k) {
             },
 
             victory() {
+                this.won = true;
                 if (this.curTweenX) this.curTweenX.cancel();
                 if (this.curTweenRot) this.curTweenRot.cancel();
                 if (this.curTweenY) this.curTweenY.cancel();
                 this.disableControls();
-                this.dest.x = k.width() + 64 * 2 + 10;
+                this.dest.x = k.center().x + k.width() + 135;
                 this.dest.y = k.center().y;
                 this.rotation = 0;
 
-                k.camPos(k.center())
-                
+                if (!this.curTweenCamPos) {
+                    this.curTweenCamPos = k.tween(
+                        k.vec2(k.center().x, this.pos.y),
+                        k.center(),
+                        3,
+                        (p) => {
+                            k.camPos(p)
+                        },
+                        k.easings.linear
+                    )
+                }
+
+
+
                 this.curTweenRot = k.tween(
                     this.angle,
                     this.rotation,
-                    this.speed / 2,
+                    3,
                     (a) => {
                         this.angle = a
                     },
@@ -132,9 +147,9 @@ export function makePlayer(k) {
                 this.curTweenX = k.tween(
                     this.pos.x,
                     this.dest.x,
-                    this.speed,
+                    5,
                     (p) => {
-                        if (this.pos.x >= k.width() + 64 * 2) {
+                        if (this.pos.x >= k.width() + k.center().x + 135) {
                             k.go("main2");
                         } else {
                             this.pos.x = p;
@@ -146,7 +161,7 @@ export function makePlayer(k) {
                 this.curTweenY = k.tween(
                     this.pos.y,
                     this.dest.y,
-                    this.speed,
+                    3,
                     (p) => {
                         this.pos.y = p;
 
@@ -161,27 +176,35 @@ export function makePlayer(k) {
                     if (this.curTweenRot) this.curTweenRot.cancel();
                     if (this.curTweenY) this.curTweenY.cancel();
                     this.destroy();
-                    k.add(
+                    const explosion = k.add(
                         [
                             k.sprite("explosion", {
                                 anim: "explode"
                             }),
-                            k.pos(pos.x - 64, pos.y - 64),
-                            k.scale(4)
+                            k.anchor("center"),
+                            k.pos(pos.x, pos.y),
+                            k.scale(4),
                         ]
                     );
-                    const restart = k.add(
-                        makeRestart(k),
-                    );
-                    const start = k.add(
-                        makeStart(k)
-                    );
-                    restart.onClick(() => {
-                        k.go("main");
-                    });
-                    start.onClick(() => {
-                        k.go("start");
+
+                    k.wait(2, () => {
+                        if (explosion.curAnim() != "explode") {
+                            const restart = k.add(
+                                makeRestart(k),
+                            );
+                            const start = k.add(
+                                makeStart(k)
+                            );
+                            restart.onClick(() => {
+                                k.go("main");
+                            });
+                            start.onClick(() => {
+                                k.go("start");
+                            })
+                        }
                     })
+
+
                 }
             },
 
