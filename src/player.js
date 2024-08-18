@@ -107,6 +107,7 @@ export function makePlayer(k) {
                 )
 
                 this.onUpdate(rotateLogic);
+               
 
             },
 

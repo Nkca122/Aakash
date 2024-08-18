@@ -65,6 +65,10 @@ export function controls(k, pos){
   )
 
   nextBtn.onClick(()=>{
+    k.play("click", {
+      speed: 1,
+      volume: 0.2
+  });
     k.go("main")
   })
 

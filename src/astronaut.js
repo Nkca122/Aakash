@@ -88,6 +88,7 @@ export function makeAstronaut(k, map) {
                         k.onKeyPress("w", () => {
                             if (!this.isFloating) {
                                 if (this.pos.y >= 668) {
+                                    k.play("jump")
                                     this.dest.y = 48;
                                     this.isFloating = true;
                                     if (this.curTweenRot) this.curTweenRot.cancel();
@@ -101,6 +102,7 @@ export function makeAstronaut(k, map) {
                                         k.easings.linear
                                     )
                                 } else if (this.pos.y <= 48) {
+                                    k.play("jump")
                                     this.dest.y = 668;
                                     this.isFloating = true;
                                     if (this.curTweenRot) this.curTweenRot.cancel();

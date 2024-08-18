@@ -15,7 +15,7 @@ const k = kaplay({
     width: 1280,
     height: 720,
     letterbox: true,
-    
+
 });
 
 k.loadSprite("ocean", "./Ocean/ocean.png");
@@ -129,7 +129,14 @@ k.loadSprite("rare", "./rare.png", {
 
 k.loadSprite("scaffold", "./scaffold.png");
 k.loadSound("background", "./back.mp3");
-k.play("background")
+k.loadSound("confirm", "./confirm.wav");
+k.loadSound("hurt", "./hurt.wav");
+k.loadSound("jump", "./jump.wav");
+k.loadSound("turn", "./turn.mp3");
+k.loadSound("rocket", "./rocket.mp3");
+k.loadSound("explosion", "./explosion.mp3")
+k.loadSound("click", "./click.mp3")
+
 
 let rareScore = 0;
 let alienScore = 0;
@@ -171,6 +178,12 @@ k.scene("start", async () => {
     const map = k.add(
         makeBackgroundEarth(k)
     )
+
+    k.play("background", {
+        volume: 0.5,
+        speed: 1,
+        loop: true,
+    });
 
     k.onKeyPress("f11", async (key) => {
         if (await appWindow.isFullscreen()) {
@@ -241,6 +254,10 @@ k.scene("start", async () => {
     playBtn.onClick(() => {
         playBtn.destroy();
         astronaut.destroy();
+        k.play("click", {
+            speed: 1,
+            volume: 0.2
+        });
         k.wait(0.5, () => {
             const exhaust = rocket.add(
                 [
@@ -248,10 +265,15 @@ k.scene("start", async () => {
                         anim: "burn"
                     }),
                     k.anchor("center"),
-                    k.pos(-35, 32),
+                    k.pos(-28, 32),
                     k.scale(2),
                 ]
             );
+
+            k.play("rocket", {
+                volume: 0.2,
+                speed: 0.4,
+            });
 
             rocket.curTween = k.tween(
                 rocket.pos,
@@ -271,7 +293,7 @@ k.scene("start", async () => {
 
 });
 
-k.scene("controls", ()=>{
+k.scene("controls", () => {
     k.setGravity(0);
     const map = k.add(
         makeBackgroundEarth(k)
@@ -302,13 +324,13 @@ k.scene("controls", ()=>{
 
 
 
-   
-    k.wait(1, ()=>{
+
+    k.wait(1, () => {
         map.add(
             controls(k, k.center())
         )
     })
-    
+
 })
 
 
@@ -323,6 +345,11 @@ k.scene("main", () => {
     const map = k.add(
         makeBackgroundSpace(k)
     );
+
+    k.play("rocket", {
+        volume: 0.2,
+        speed: 0.4,
+    });
 
     map.add(
         [
@@ -360,6 +387,11 @@ k.scene("main", () => {
     );
 
     player.setControls();
+
+    k.play("rocket", {
+        volume: 0.2,
+        speed: 0.4
+    })
 
     k.loop(1.5, () => {
         let maxAsteroidCt = 5;
@@ -401,6 +433,10 @@ k.scene("main", () => {
                     asteroid.destroy();
                 });
             }
+            k.play("rocket", {
+                volume: 0.2,
+                speed: 0.4
+            })
             player.victory();
         }
         bar.tick(survivalTime, 30);
@@ -425,15 +461,24 @@ k.scene("main", () => {
                 k.pos(rare.pos),
                 k.opacity(),
                 k.lifespan(0.5)
+                
             ]
         );
         rare.destroy();
+        k.play("confirm", {
+            speed: 0.2,
+            volume: 0.8
+        });
     })
 
 
     player.onCollide("asteroid", () => {
         player.isDead = true;
         player.death(player.pos);
+        k.play("explosion", {
+            volume: 1,
+            speed: 0.5
+        })
         let asteroidArray = map.get("asteroid");
         if (asteroidArray.length) {
             asteroidArray.forEach(asteroid => {
@@ -447,6 +492,10 @@ k.scene("main", () => {
     player.onCollide("barrier", () => {
         player.isDead = true;
         player.death(player.pos);
+        k.play("explosion", {
+            volume: 1,
+            speed: 0.5
+        })
         let asteroidArray = map.get("asteroid");
         if (asteroidArray.length) {
             asteroidArray.forEach(asteroid => {
@@ -467,6 +516,11 @@ k.scene("main2", () => {
     const map = k.add(
         makeBackgroundSpace(k)
     );
+
+    k.play("rocket", {
+        volume: 0.2,
+        speed: 0.4,
+    });
 
     let bar;
 
@@ -561,6 +615,12 @@ k.scene("main2", () => {
                             map.get("alien", alien => {
                                 alien.destroy();
                             })
+
+                            k.play("rocket", {
+                                volume: 0.2,
+                                speed: 0.4,
+                            });
+
                             k.wait(4, () => {
                                 if (rocket.curTween) rocket.curTween.cancel();
                                 rocket.curTween = k.tween(
@@ -592,6 +652,11 @@ k.scene("main2", () => {
                                 k.easings.linear
                             )
 
+                            k.play("rocket", {
+                                volume: 0.2,
+                                speed: 0.4,
+                            });
+
                             if (exhaust.curTween) exhaust.curTween.cancel();
                             exhaust.curTween = k.tween(
                                 0,
@@ -619,6 +684,10 @@ k.scene("main2", () => {
 
                     astronaut.setControls(map);
                     astronaut.onCollide("asteroid", () => {
+                        k.play("explosion", {
+                            volume: 1,
+                            speed: 0.5
+                        });
                         astronaut.isDead = true;
                         astronaut.death(astronaut.pos);
                         let asteroidArray = map.get("asteroid");
@@ -651,6 +720,12 @@ k.scene("main2", () => {
                                     k.lifespan(1)
                                 ]
                             );
+
+                            k.play("confirm", {
+                                volume: 0.8,
+                                speed: 1
+                            })
+                            
                             k.wait(1, () => {
                                 alien.isInspected = false;
                             })
@@ -776,10 +851,15 @@ k.scene("end", async () => {
                 anim: "burn"
             }),
             k.anchor("center"),
-            k.pos(-35, 32),
+            k.pos(-28, 32),
             k.scale(2),
         ]
-    )
+    );
+
+    k.play("rocket", {
+        volume: 0.2,
+        speed: 0.4
+    })
 
     map.add([
         k.sprite("scaffold"),
