@@ -1,7 +1,5 @@
-# Tauri + React
+# Star Man
+A 2D Cross-platform game where the player, adventures through space avoiding asteroids hurling towards their ship, as they travel between two comets in order to land at their destination and investigate the aliens detected by mission control there and return home safely
 
-This template should help get you started developing with Tauri and React in Vite.
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Installation
+Navigate to the downloads folder in the repository and select the installer suitable to your platform
